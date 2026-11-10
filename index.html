@@ -754,6 +754,7 @@
       const [newAttTypeModalOpen, setNewAttTypeModalOpen] = useState(false);
       const [newAttTypeForm, setNewAttTypeForm] = useState({ id: '', label: '', points: -2 });
       const [printReportTarget, setPrintReportTarget] = useState(null);
+      const [printReportType, setPrintReportType] = useState('CONDUCT_WEEKLY'); // 'CONDUCT_WEEKLY' | 'GRADES' | 'SEATING_CHART'
 
       const [yearModalOpen, setYearModalOpen] = useState(false);
       const [newYearName, setNewYearName] = useState('2027 - 2028');
@@ -1905,8 +1906,9 @@
         return [printReportTarget];
       }, [printReportTarget, currentStudents]);
 
-      const triggerPrintPDF = (target) => {
+      const triggerPrintPDF = (target, type = 'CONDUCT_WEEKLY') => {
         setPrintReportTarget(target);
+        setPrintReportType(type);
         setTimeout(() => {
           window.print();
         }, 250);
@@ -2398,7 +2400,7 @@
                           <th className="py-2.5 px-2 border-r border-gray-200 w-32">Thái độ học tập</th>
                           <th className="py-2.5 px-2 border-r border-gray-200 w-28">SĐT Học sinh</th>
                           <th className="py-2.5 px-2 border-r border-gray-200 w-28">SĐT Phụ huynh</th>
-                          <th className="py-2.5 px-2.5 text-center w-40">Tác vụ & Liên lạc PH</th>
+                          <th className="py-2.5 px-2.5 text-center w-48">Tác vụ & Xuất Phiếu</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200">
@@ -2551,10 +2553,18 @@
                                   Zalo PH
                                 </button>
                                 <button
-                                  onClick={() => triggerPrintPDF(stu)}
-                                  className="px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-800 border border-gray-300 rounded font-medium"
+                                  onClick={() => triggerPrintPDF(stu, 'CONDUCT_WEEKLY')}
+                                  className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded font-semibold"
+                                  title={`In phiếu báo vi phạm Tuần ${selectedWeek} gửi PH`}
                                 >
-                                  Phiếu PDF
+                                  Phiếu Tuần
+                                </button>
+                                <button
+                                  onClick={() => triggerPrintPDF(stu, 'GRADES')}
+                                  className="px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 rounded font-semibold"
+                                  title="In phiếu điểm các môn học"
+                                >
+                                  Phiếu Điểm
                                 </button>
                                 <button
                                   onClick={() =>
@@ -2634,11 +2644,12 @@
                         Đặt cả lớp Có mặt đủ (100đ)
                       </button>
                       <button
-                        onClick={() => triggerPrintPDF('ALL')}
-                        className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-semibold"
+                        onClick={() => triggerPrintPDF('ALL', 'CONDUCT_WEEKLY')}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded text-xs font-semibold"
+                        title={`In Phiếu báo cáo vi phạm Tuần ${selectedWeek} cho từng em (mỗi HS 1 trang)`}
                       >
                         <Printer className="w-3.5 h-3.5" />
-                        Xuất Phiếu Chuyên Cần & Điểm (PDF)
+                        In Phiếu Báo Vi Phạm Tuần {selectedWeek} (Cả Lớp)
                       </button>
                     </div>
                   </div>
@@ -2675,7 +2686,8 @@
                           <th className="py-2.5 px-2.5 border-r border-gray-200 text-center w-24">
                             Điểm Tuần {selectedWeek}
                           </th>
-                          <th className="py-2.5 px-2.5 text-center w-24">Xếp loại</th>
+                          <th className="py-2.5 px-2.5 border-r border-gray-200 text-center w-24">Xếp loại</th>
+                          <th className="py-2.5 px-2 text-center w-24">Phiếu Tuần</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200">
@@ -2755,6 +2767,15 @@
                                   {summary.rank}
                                 </span>
                               </td>
+                              <td className="py-2 px-2 text-center">
+                                <button
+                                  onClick={() => triggerPrintPDF(stu, 'CONDUCT_WEEKLY')}
+                                  className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded text-[11px] font-semibold"
+                                  title="In phiếu vi phạm tuần này của riêng em này"
+                                >
+                                  Phiếu Tuần
+                                </button>
+                              </td>
                             </tr>
                           );
                         })}
@@ -2764,7 +2785,7 @@
                 </div>
               )}
 
-              {/* TAB 3: SỔ ĐIỂM KTĐG THƯỜNG XUYÊN & ĐỊNH KỲ */}
+              {/* TAB 3: SỔ ĐIỂM KTĐG (TX & ĐK) */}
               {activeTab === 'SODIEM' && (
                 <div className="space-y-4">
                   <div className="bg-white p-4 rounded border border-gray-200 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
@@ -2795,6 +2816,7 @@
                                       ? 'bg-blue-700 text-blue-100 border-blue-600 hover:bg-red-600'
                                       : 'bg-gray-100 text-gray-500 border-gray-300 hover:text-red-600'
                                   }`}
+                                  title={`Xóa môn ${subj}`}
                                 >
                                   <X className="w-3.5 h-3.5" />
                                 </button>
@@ -2803,6 +2825,7 @@
                           );
                         })}
 
+                        {/* Form tạo thêm môn học cho lớp */}
                         <form onSubmit={handleAddSubjectToClass} className="inline-flex items-center gap-1 ml-1">
                           <input
                             type="text"
@@ -2846,6 +2869,14 @@
                         <Download className="w-3.5 h-3.5" />
                         Xuất Bảng điểm (.CSV)
                       </button>
+                      <button
+                        onClick={() => triggerPrintPDF('ALL', 'GRADES')}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-semibold"
+                        title="In Phiếu điểm các môn học cho cả lớp"
+                      >
+                        <Printer className="w-3.5 h-3.5" />
+                        In Phiếu Điểm (PDF)
+                      </button>
                     </div>
                   </div>
 
@@ -2855,31 +2886,15 @@
                         <tr className="bg-gray-100 border-b border-gray-200 text-gray-700 font-semibold">
                           <th className="py-2.5 px-2.5 border-r border-gray-200 w-32">Mã định danh Bộ</th>
                           <th className="py-2.5 px-3 border-r border-gray-200 min-w-[165px]">Họ và tên</th>
-                          <th className="py-2.5 px-2.5 border-r border-gray-200 w-28">Thái độ</th>
-                          <th className="py-2.5 px-2 border-r border-gray-200 text-center w-16 bg-blue-50/50">
-                            TX 1 (HS1)
-                          </th>
-                          <th className="py-2.5 px-2 border-r border-gray-200 text-center w-16 bg-blue-50/50">
-                            TX 2 (HS1)
-                          </th>
-                          <th className="py-2.5 px-2 border-r border-gray-200 text-center w-16 bg-blue-50/50">
-                            TX 3 (HS1)
-                          </th>
-                          <th className="py-2.5 px-2 border-r border-gray-200 text-center w-16 bg-blue-50/50">
-                            TX 4 (HS1)
-                          </th>
-                          <th className="py-2.5 px-2 border-r border-gray-200 text-center w-20 bg-amber-50/60">
-                            KTĐK GK (HS2)
-                          </th>
-                          <th className="py-2.5 px-2 border-r border-gray-200 text-center w-20 bg-rose-50/60">
-                            KTĐK CK (HS3)
-                          </th>
-                          <th className="py-2.5 px-2.5 border-r border-gray-200 text-center w-24 bg-emerald-50/60">
-                            ĐTB {semester}
-                          </th>
-                          <th className="py-2.5 px-3 min-w-[240px]">
-                            Nhận xét bộ môn {selectedSubject} (Có hỗ trợ AI)
-                          </th>
+                          <th className="py-2.5 px-2 border-r border-gray-200 w-24">Thái độ</th>
+                          <th className="py-2.5 px-2 border-r border-gray-200 text-center w-16 bg-blue-50/50">TX 1</th>
+                          <th className="py-2.5 px-2 border-r border-gray-200 text-center w-16 bg-blue-50/50">TX 2</th>
+                          <th className="py-2.5 px-2 border-r border-gray-200 text-center w-16 bg-blue-50/50">TX 3</th>
+                          <th className="py-2.5 px-2 border-r border-gray-200 text-center w-16 bg-blue-50/50">TX 4</th>
+                          <th className="py-2.5 px-2 border-r border-gray-200 text-center w-20 bg-amber-50/60">GK (HS2)</th>
+                          <th className="py-2.5 px-2 border-r border-gray-200 text-center w-20 bg-rose-50/60">CK (HS3)</th>
+                          <th className="py-2.5 px-2.5 border-r border-gray-200 text-center w-24 bg-emerald-50/60">ĐTB {semester}</th>
+                          <th className="py-2.5 px-3 min-w-[240px]">Nhận xét môn {selectedSubject}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200">
@@ -2894,7 +2909,7 @@
                               <td className="py-1.5 px-3 border-r border-gray-200 font-semibold text-gray-900">
                                 {stu.name}
                               </td>
-                              <td className="py-1.5 px-2.5 border-r border-gray-200 text-gray-600">
+                              <td className="py-1.5 px-2 border-r border-gray-200 text-gray-600">
                                 {stu.attitude}
                               </td>
                               {['tx1', 'tx2', 'tx3', 'tx4', 'gk', 'ck'].map((col) => (
@@ -2933,7 +2948,7 @@
                                   <input
                                     type="text"
                                     value={scoreObj.comment || ''}
-                                    placeholder="Ghi nhận xét hoặc bấm nút AI..."
+                                    placeholder="Ghi nhận xét..."
                                     onChange={(e) => handleGradeChange(stu.id, 'comment', e.target.value)}
                                     className="flex-1 px-2 py-1 text-xs bg-gray-50 focus:bg-white border border-gray-200 focus:border-blue-600 rounded focus:outline-none"
                                   />
@@ -3492,7 +3507,7 @@
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 border border-blue-200 hover:bg-blue-100 text-blue-800 rounded text-xs font-semibold"
                       >
                         <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-                        AI Viết Nhận xét Tổng kết cho cả lớp
+                        AI Viết Nhận xét Tổng kết
                       </button>
                       <button
                         onClick={exportClassCSV}
@@ -3502,15 +3517,25 @@
                         Xuất Excel/CSV Tổng kết
                       </button>
                       <button
-                        onClick={() => triggerPrintPDF('ALL')}
-                        className="flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-semibold"
+                        onClick={() => triggerPrintPDF('ALL', 'CONDUCT_WEEKLY')}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded text-xs font-semibold"
+                        title="In Phiếu vi phạm & chuyên cần Tuần cho từng học sinh để gửi phụ huynh"
                       >
                         <Printer className="w-3.5 h-3.5" />
-                        In / Xuất PDF Phiếu Liên Lạc Cả Lớp (Mỗi HS 1 trang)
+                        1. In Phiếu Vi Phạm Tuần {selectedWeek} (Cả Lớp)
+                      </button>
+                      <button
+                        onClick={() => triggerPrintPDF('ALL', 'GRADES')}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-semibold"
+                        title="In Phiếu điểm các môn học cho cả lớp"
+                      >
+                        <Printer className="w-3.5 h-3.5" />
+                        2. In Phiếu Điểm Các Môn (Cả Lớp)
                       </button>
                     </div>
                   </div>
 
+                  {/* Thống kê nhanh Bảng vàng & Cảnh báo hỗ trợ sớm */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     <div className="bg-white p-4 rounded border border-gray-200">
                       <div className="flex items-center gap-2 text-xs font-bold text-emerald-800 mb-2">
@@ -3538,7 +3563,7 @@
                                     Hạng {idx + 1}: {stu.name}
                                   </span>{' '}
                                   <span className="text-gray-600">
-                                    ({stu.vocational || 'Chưa phân nghề'} • {stu.role})
+                                    ({stu.role} • {stu.attitude})
                                   </span>
                                 </div>
                                 <div className="font-bold text-emerald-800">
@@ -3594,6 +3619,7 @@
                     </div>
                   </div>
 
+                  {/* Bảng Tổng hợp Điểm các môn + Chuyên cần + Nhận xét cuối năm */}
                   <div className="bg-white border border-gray-200 rounded overflow-x-auto">
                     <table className="w-full text-left border-collapse text-xs">
                       <thead>
@@ -3695,6 +3721,7 @@
                                   <button
                                     onClick={() => handleGenerateAICommentForStudent(stu)}
                                     className="px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded text-[11px] font-bold shrink-0"
+                                    title="Tạo nhận xét AI dựa trên Thái độ + Chuyên cần + Điểm các môn"
                                   >
                                     AI
                                   </button>
@@ -3703,10 +3730,18 @@
                               <td className="py-2 px-2 text-center">
                                 <div className="flex flex-col gap-1">
                                   <button
-                                    onClick={() => triggerPrintPDF(stu)}
-                                    className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-[11px] font-semibold"
+                                    onClick={() => triggerPrintPDF(stu, 'CONDUCT_WEEKLY')}
+                                    className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded text-[11px] font-semibold"
+                                    title={`In phiếu vi phạm Tuần ${selectedWeek}`}
                                   >
-                                    In Phiếu PDF
+                                    Phiếu Tuần {selectedWeek}
+                                  </button>
+                                  <button
+                                    onClick={() => triggerPrintPDF(stu, 'GRADES')}
+                                    className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-[11px] font-semibold"
+                                    title="In phiếu điểm môn học"
+                                  >
+                                    Phiếu Điểm
                                   </button>
                                   <button
                                     onClick={() => handleCopyZaloReport(stu)}
@@ -4699,7 +4734,7 @@
                       onChange={(e) => setPromoteClassesMode(e.target.checked)}
                     />
                     <span className="text-blue-900 font-medium">
-                      Tự động lên lớp từ năm học hiện tại (10A1 &rarr; 11A1, giữ nguyên Mã định danh Bộ, Học nghề, SĐT Phụ huynh)
+                      Tự động lên lớp từ năm học hiện tại (10A1 &rarr; 11A1, giữ nguyên danh sách HS & SĐT Phụ huynh, làm mới bảng điểm)
                     </span>
                   </label>
                 </div>
@@ -4724,7 +4759,7 @@
             </div>
           )}
 
-          {/* MODAL TRUNG TÂM SAO LƯU (.JSON) & ĐỒNG BỘ GITHUB CLOUD */}
+          {/* MODAL TRUNG TÂM SAO LƯU (.JSON) & ĐỒNG BỘ GITHUB */}
           {backupModalOpen && (
             <div className="fixed inset-0 z-40 bg-black/40 flex items-center justify-center p-4 no-print">
               <div className="bg-white border border-gray-300 rounded w-full max-w-xl p-5 space-y-4 text-xs max-h-[90vh] overflow-y-auto">
@@ -4732,7 +4767,7 @@
                   <div className="flex items-center gap-2">
                     <Database className="w-4 h-4 text-emerald-600" />
                     <h3 className="font-bold text-sm text-gray-900">
-                      Trung Tâm Sao Lưu Dữ Liệu Lớn & Đồng Bộ Đám Mây GitHub
+                      Trung Tâm Sao Lưu Dữ Liệu & Đồng Bộ Đám Mây GitHub
                     </h3>
                   </div>
                   <button
@@ -4750,8 +4785,7 @@
                     </div>
                     <div className="text-emerald-800 mt-0.5">
                       Đã dùng: <strong>{storageStats.usedKB} KB</strong> / Dung lượng tối đa:{' '}
-                      <strong>~{storageStats.quotaMB} MB</strong> (Lưu lần cuối lúc{' '}
-                      {storageStats.lastSavedTime})
+                      <strong>~{storageStats.quotaMB} MB</strong> (Lưu lần cuối lúc {storageStats.lastSavedTime})
                     </div>
                   </div>
                   <span className="px-2 py-1 bg-white border border-emerald-300 rounded font-bold text-emerald-800">
@@ -4789,7 +4823,7 @@
                     2. Đồng bộ Đám mây trực tiếp lên GitHub cá nhân (GitHub Gist Cloud)
                   </div>
                   <p className="text-gray-600">
-                    Nếu bạn dùng web trên GitHub Pages ở nhiều máy (MacBook ở nhà, máy tính ở trường, iPad), nhập <strong>GitHub Token</strong> (quyền <code>gist</code>) để đẩy và kéo dữ liệu chỉ với 1 nút bấm:
+                    Nếu bạn dùng web trên GitHub Pages ở nhiều máy, hãy nhập <strong>GitHub Token</strong> (quyền <code>gist</code>) để đẩy và kéo dữ liệu:
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <div>
@@ -4830,7 +4864,7 @@
                       disabled={cloudSyncLoading}
                       className="px-3.5 py-1.5 bg-white border border-gray-300 hover:bg-gray-100 text-gray-800 rounded font-semibold"
                     >
-                      Tải dữ liệu từ GitHub Cloud về máy này
+                      Tải dữ liệu từ GitHub Cloud về máy
                     </button>
                   </div>
                 </div>
@@ -4838,9 +4872,9 @@
             </div>
           )}
 
-          {/* CHẾ ĐỘ IN PHIẾU LIÊN LẠC / TỔNG KẾT PDF HOẶC SƠ ĐỒ CHỖ NGỒI */}
+          {/* CHẾ ĐỘ IN PDF: TÁCH BIỆT 1. PHIẾU VI PHẠM TUẦN | 2. PHIẾU ĐIỂM CÁC MÔN | 3. SƠ ĐỒ CHỖ NGỒI */}
           <div className="hidden print-only w-full bg-white text-black">
-            {printReportTarget === 'SEATING_CHART' ? (
+            {printReportTarget === 'SEATING_CHART' || printReportType === 'SEATING_CHART' ? (
               <div className="p-6 max-w-6xl mx-auto">
                 {/* Tiêu đề trang in Sơ đồ lớp */}
                 <div className="flex justify-between items-start border-b-2 border-black pb-3 mb-4">
@@ -4975,197 +5009,381 @@
                   </div>
                 </div>
               </div>
-            ) : (
+            ) : printReportType === 'CONDUCT_WEEKLY' ? (
+              /* ==============================================================
+                 1. PHIẾU BÁO CÁO NỀ NẾP & VI PHẠM THEO TỪNG TUẦN
+                 Mỗi học sinh 1 trang A4 hoàn chỉnh để gửi phụ huynh ký xác nhận
+              =============================================================== */
               studentsToPrint.map((stu, idx) => {
-              const weekCond = calculateWeeklyConductScore(stu.id, selectedWeek);
-              const yearCond = calculateYearAttendanceSummary(stu.id);
-              const gpaSem = getStudentOverallGPA(stu.id, 'SEMESTER');
-              const gpaYear = getStudentOverallGPA(stu.id, 'WHOLE_YEAR');
-              const honor = getHonorTitle(gpaYear, yearCond.yearConductRank);
+                const weekCond = calculateWeeklyConductScore(stu.id, selectedWeek);
+                const yearCond = calculateYearAttendanceSummary(stu.id);
+                const weekRec = getStudentWeekRecord(stu.id, selectedWeek);
 
-              return (
-                <div
-                  key={stu.id}
-                  className={`p-8 max-w-4xl mx-auto ${
-                    idx < studentsToPrint.length - 1 ? 'page-break' : ''
-                  }`}
-                >
-                  <div className="flex justify-between items-start border-b-2 border-black pb-4 mb-5">
-                    <div>
-                      <div className="text-xs font-bold uppercase">{schoolName}</div>
-                      <div className="text-xs mt-0.5">
-                        Năm học: <strong>{schoolYear}</strong> • {semester}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-base font-bold uppercase">
-                        PHIẾU THÔNG BÁO KẾT QUẢ HỌC TẬP & RÈN LUYỆN
-                      </div>
-                      <div className="text-xs mt-0.5">
-                        Lớp: <strong>{currentClassObj.name}</strong> • GV phụ trách:{' '}
-                        <strong>{teacherName}</strong>
-                      </div>
-                    </div>
-                  </div>
+                const violationList = [];
+                DAYS_OF_WEEK.forEach((d) => {
+                  const codes = weekRec[d.key] || [];
+                  codes.forEach((code) => {
+                    const t = attendanceTypes.find((x) => x.id === code);
+                    const label = t ? t.label : code;
+                    if (t?.points < 0) {
+                      violationList.push({ day: d.label, label, pts: `${t.points}đ` });
+                    }
+                  });
+                });
 
-                  <div className="grid grid-cols-3 gap-2 text-xs border border-black p-3 mb-4">
-                    <div>
-                      Họ và tên: <strong>{stu.name}</strong>
-                    </div>
-                    <div>
-                      Mã định danh Bộ: <strong>{stu.moetId || stu.id}</strong>
-                    </div>
-                    <div>
-                      Ngày sinh: <strong>{stu.dob}</strong> ({stu.gender})
-                    </div>
-                    <div>
-                      Tình trạng: <strong>{stu.status || 'Đang học'}</strong>
-                    </div>
-                    <div>
-                      Học nghề: <strong>{stu.vocational || 'Chưa phân nghề'}</strong>
-                    </div>
-                    <div>
-                      Chức vụ: <strong>{stu.role}</strong>
-                    </div>
-                    <div>
-                      Thái độ học tập: <strong>{stu.attitude}</strong>
-                    </div>
-                    <div>
-                      SĐT Phụ huynh: <strong>{stu.parentPhone || '--'}</strong>
-                    </div>
-                    <div>
-                      Danh hiệu dự kiến: <strong>{honor}</strong>
-                    </div>
-                  </div>
-
-                  <div className="mb-4">
-                    <div className="text-xs font-bold uppercase mb-1.5">
-                      I. Kết quả Chuyên cần & Rèn luyện kỷ luật (7 ngày/tuần: Thứ 2 - Chủ nhật)
-                    </div>
-                    <div className="grid grid-cols-4 gap-2 text-xs border border-black p-2.5">
+                return (
+                  <div
+                    key={stu.id}
+                    className={`p-8 max-w-4xl mx-auto ${
+                      idx < studentsToPrint.length - 1 ? 'page-break' : ''
+                    }`}
+                  >
+                    <div className="flex justify-between items-start border-b-2 border-black pb-3 mb-4">
                       <div>
-                        Điểm Tuần {selectedWeek}:{' '}
-                        <strong>
-                          {weekCond.score}/100đ ({weekCond.rank})
-                        </strong>
+                        <div className="text-xs font-bold uppercase">{schoolName}</div>
+                        <div className="text-xs mt-0.5">
+                          Lớp: <strong>{currentClassObj.name}</strong> • Năm học: <strong>{schoolYear}</strong>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-xs uppercase font-semibold">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</div>
+                        <div className="text-[10px] italic">Độc lập - Tự do - Hạnh phúc</div>
+                      </div>
+                    </div>
+
+                    <div className="text-center my-3">
+                      <div className="text-base font-bold uppercase tracking-wide">
+                        PHIẾU THÔNG BÁO NỀ NẾP & VI PHẠM KỶ LUẬT TUẦN {selectedWeek}
+                      </div>
+                      <div className="text-xs italic text-gray-700 mt-0.5">
+                        (Từ Thứ Hai đến Chủ Nhật - {semester})
+                      </div>
+                    </div>
+
+                    {/* Thông tin học sinh */}
+                    <div className="grid grid-cols-3 gap-2 text-xs border border-black p-3 mb-4">
+                      <div>
+                        Họ và tên: <strong>{stu.name}</strong>
                       </div>
                       <div>
-                        Điểm TB Cả năm:{' '}
-                        <strong>
-                          {yearCond.avgConductScore}/100đ ({yearCond.yearConductRank})
-                        </strong>
+                        Mã định danh Bộ: <strong>{stu.moetId || stu.id}</strong>
                       </div>
                       <div>
-                        Số buổi nghỉ:{' '}
-                        <strong>
-                          {yearCond.absentP} có phép / {yearCond.absentK} không phép
-                        </strong>
+                        Ngày sinh: <strong>{stu.dob}</strong> ({stu.gender})
                       </div>
                       <div>
-                        Đi muộn / Phát biểu:{' '}
-                        <strong>
-                          {yearCond.late} lần muộn / {yearCond.plusCount} lượt khen
-                        </strong>
+                        Tình trạng: <strong>{stu.status || 'Đang học'}</strong>
+                      </div>
+                      <div>
+                        Học nghề: <strong>{stu.vocational || 'Chưa phân nghề'}</strong>
+                      </div>
+                      <div>
+                        Chức vụ lớp: <strong>{stu.role}</strong>
+                      </div>
+                      <div>
+                        Thái độ học tập: <strong>{stu.attitude}</strong>
+                      </div>
+                      <div>
+                        SĐT Học sinh: <strong>{stu.studentPhone || '--'}</strong>
+                      </div>
+                      <div>
+                        SĐT Phụ huynh: <strong>{stu.parentPhone || '--'}</strong>
+                      </div>
+                    </div>
+
+                    {/* I. Bảng ghi nhận nề nếp 7 ngày trong tuần */}
+                    <div className="mb-4">
+                      <div className="text-xs font-bold uppercase mb-1.5">
+                        I. Bảng theo dõi nề nếp từng ngày trong Tuần {selectedWeek} (Thứ 2 - Chủ nhật)
+                      </div>
+                      <table className="w-full border-collapse border border-black text-xs">
+                        <thead>
+                          <tr className="bg-gray-100">
+                            <th className="border border-black py-1.5 px-2 text-center w-28">Thứ / Ngày</th>
+                            <th className="border border-black py-1.5 px-3 text-left">Lỗi vi phạm / Khen thưởng ghi nhận</th>
+                            <th className="border border-black py-1.5 px-2 text-center w-24">Điểm cộng/trừ</th>
+                            <th className="border border-black py-1.5 px-2 text-center w-28">Đánh giá ngày</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {DAYS_OF_WEEK.map((d) => {
+                            const codes = weekRec[d.key] || [];
+                            let dayPts = 0;
+                            const details = codes.map((c) => {
+                              const t = attendanceTypes.find((x) => x.id === c);
+                              const pts = Number(t?.points || 0);
+                              dayPts += pts;
+                              return `${t ? t.label : c} (${pts > 0 ? '+' : ''}${pts}đ)`;
+                            });
+
+                            return (
+                              <tr key={d.key}>
+                                <td className="border border-black py-1 px-2 text-center font-bold">
+                                  {d.label}
+                                </td>
+                                <td className="border border-black py-1 px-3">
+                                  {codes.length === 0 ? (
+                                    <span className="text-gray-600 italic">
+                                      Đi học đầy đủ, đúng giờ, chấp hành tốt nội quy.
+                                    </span>
+                                  ) : (
+                                    <span className="font-semibold text-black">
+                                      {details.join('; ')}
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="border border-black py-1 px-2 text-center font-bold">
+                                  {codes.length === 0 ? '0đ' : `${dayPts > 0 ? '+' : ''}${dayPts}đ`}
+                                </td>
+                                <td className="border border-black py-1 px-2 text-center font-semibold">
+                                  {codes.length === 0 ? 'Tốt' : dayPts < 0 ? 'Có vi phạm' : 'Khen thưởng'}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* II. Kết quả thi đua tuần */}
+                    <div className="mb-4">
+                      <div className="text-xs font-bold uppercase mb-1.5">
+                        II. Kết quả thi đua & Chuyên cần Tuần {selectedWeek}
+                      </div>
+                      <div className="grid grid-cols-4 gap-2 text-xs border border-black p-2.5">
+                        <div>
+                          Điểm thi đua tuần:{' '}
+                          <strong className="text-sm">
+                            {weekCond.score} / 100đ
+                          </strong>
+                        </div>
+                        <div>
+                          Xếp loại tuần:{' '}
+                          <strong>{weekCond.rank}</strong>
+                        </div>
+                        <div>
+                          Số buổi nghỉ tuần:{' '}
+                          <strong>
+                            {weekCond.totalAbsentP} có phép / {weekCond.totalAbsentK} không phép
+                          </strong>
+                        </div>
+                        <div>
+                          Đi muộn / Khen thưởng:{' '}
+                          <strong>
+                            {weekCond.totalLate} lần muộn / {weekCond.totalPlus} khen
+                          </strong>
+                        </div>
+                      </div>
+                      <div className="mt-1.5 text-[11px] text-gray-700 italic">
+                        * Lũy kế cả năm học: Đã vắng {yearCond.absentP} buổi có phép, {yearCond.absentK} buổi không phép, {yearCond.late} lần đi muộn. Điểm rèn luyện TB cả năm: {yearCond.avgConductScore}đ ({yearCond.yearConductRank}).
+                      </div>
+                    </div>
+
+                    {/* III. Nhận xét của GVCN */}
+                    <div className="border border-black p-3 text-xs mb-5">
+                      <div className="font-bold uppercase mb-1">
+                        III. Nhận xét của Giáo viên Chủ nhiệm & Nội dung cần phối hợp:
+                      </div>
+                      <p className="leading-relaxed">
+                        {violationList.length === 0
+                          ? `Trong Tuần ${selectedWeek}, em ${stu.name} chấp hành xuất sắc nội quy trường lớp, không có vi phạm kỷ luật, thái độ học tập ${stu.attitude.toLowerCase()}. Nhà trường và GVCN biểu dương ý thức tự giác rèn luyện của em.`
+                          : `Trong Tuần ${selectedWeek}, em ${stu.name} có các vi phạm cần lưu ý chấn chỉnh: ${violationList.map((v) => `${v.day} (${v.label})`).join(', ')}. Kính đề nghị Quý Phụ huynh sát sao đôn đốc, nhắc nhở em khắc phục ngay trong tuần tới.`}
+                        {stu.gvcnComment ? ` Ghi chú thêm: ${stu.gvcnComment}` : ''}
+                      </p>
+                    </div>
+
+                    {/* IV. Ý kiến phụ huynh và chữ ký */}
+                    <div className="grid grid-cols-2 text-xs text-center pt-2">
+                      <div className="text-left pr-4">
+                        <div className="font-bold uppercase text-center">Ý KIẾN CỦA PHỤ HUYNH HỌC SINH</div>
+                        <div className="text-[10px] italic text-center mb-2">
+                          (Gia đình đã nắm bắt tình hình vi phạm/học tập của con em)
+                        </div>
+                        <div className="border-b border-dotted border-black pb-4 text-gray-400 italic">
+                          Ý kiến phụ huynh: ....................................................................................................
+                        </div>
+                        <div className="border-b border-dotted border-black pb-4 text-gray-400 italic mt-2">
+                          ............................................................................................................................................
+                        </div>
+                        <div className="text-center mt-3">
+                          <div className="italic text-[11px]">Ngày ..... tháng ..... năm 202...</div>
+                          <div className="font-bold mt-1">Chữ ký Phụ huynh học sinh</div>
+                          <div className="text-[10px] italic text-gray-500 mt-8">(Ký và ghi rõ họ tên)</div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="italic text-[11px]">Ngày ..... tháng ..... năm 202...</div>
+                        <div className="font-bold uppercase mt-1">GIÁO VIÊN CHỦ NHIỆM</div>
+                        <div className="text-[10px] italic text-gray-500">(Ký và ghi rõ họ tên)</div>
+                        <div className="mt-16 font-bold text-sm">{teacherName}</div>
                       </div>
                     </div>
                   </div>
+                );
+              })
+            ) : (
+              /* ==============================================================
+                 2. PHIẾU THÔNG BÁO KẾT QUẢ HỌC TẬP & BẢNG ĐIỂM CÁC MÔN
+                 Dành riêng cho kết quả điểm số KTĐG TX, Giữa kỳ, Cuối kỳ
+              =============================================================== */
+              studentsToPrint.map((stu, idx) => {
+                const gpaSem = getStudentOverallGPA(stu.id, 'SEMESTER');
+                const gpaYear = getStudentOverallGPA(stu.id, 'WHOLE_YEAR');
+                const yearCond = calculateYearAttendanceSummary(stu.id);
+                const honor = getHonorTitle(gpaYear, yearCond.yearConductRank);
 
-                  <div className="mb-4">
-                    <div className="text-xs font-bold uppercase mb-1.5">
-                      II. Bảng điểm Kiểm tra Đánh giá các môn học (Chuẩn CT GDPT 2018)
+                return (
+                  <div
+                    key={stu.id}
+                    className={`p-8 max-w-4xl mx-auto ${
+                      idx < studentsToPrint.length - 1 ? 'page-break' : ''
+                    }`}
+                  >
+                    <div className="flex justify-between items-start border-b-2 border-black pb-4 mb-5">
+                      <div>
+                        <div className="text-xs font-bold uppercase">{schoolName}</div>
+                        <div className="text-xs mt-0.5">
+                          Năm học: <strong>{schoolYear}</strong> • {semester}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-base font-bold uppercase">
+                          PHIẾU THÔNG BÁO KẾT QUẢ HỌC TẬP (BẢNG ĐIỂM)
+                        </div>
+                        <div className="text-xs mt-0.5">
+                          Lớp: <strong>{currentClassObj.name}</strong> • GV phụ trách:{' '}
+                          <strong>{teacherName}</strong>
+                        </div>
+                      </div>
                     </div>
-                    <table className="w-full border-collapse border border-black text-xs">
-                      <thead>
-                        <tr className="bg-gray-100">
-                          <th className="border border-black py-1.5 px-2 text-left">Môn học</th>
-                          <th className="border border-black py-1.5 px-2 text-center">TX1</th>
-                          <th className="border border-black py-1.5 px-2 text-center">TX2</th>
-                          <th className="border border-black py-1.5 px-2 text-center">TX3</th>
-                          <th className="border border-black py-1.5 px-2 text-center">TX4</th>
-                          <th className="border border-black py-1.5 px-2 text-center">Giữa kỳ</th>
-                          <th className="border border-black py-1.5 px-2 text-center">Cuối kỳ</th>
-                          <th className="border border-black py-1.5 px-2 text-center">
-                            ĐTB {semester}
-                          </th>
-                          <th className="border border-black py-1.5 px-2 text-center">ĐTB Cả năm</th>
-                          <th className="border border-black py-1.5 px-2 text-left">
-                            Nhận xét của GVBM
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {currentSubjects.map((subj) => {
-                          const sc = getStudentSubjectScoreObj(stu.id, subj, semester);
-                          const avgSem = calculateSubjectAverage(sc);
-                          const avgYr = getSubjectWholeYearAvg(stu.id, subj);
-                          return (
-                            <tr key={subj}>
-                              <td className="border border-black py-1.5 px-2 font-bold">{subj}</td>
-                              <td className="border border-black py-1.5 px-2 text-center">
-                                {sc.tx1 || '-'}
-                              </td>
-                              <td className="border border-black py-1.5 px-2 text-center">
-                                {sc.tx2 || '-'}
-                              </td>
-                              <td className="border border-black py-1.5 px-2 text-center">
-                                {sc.tx3 || '-'}
-                              </td>
-                              <td className="border border-black py-1.5 px-2 text-center">
-                                {sc.tx4 || '-'}
-                              </td>
-                              <td className="border border-black py-1.5 px-2 text-center">
-                                {sc.gk || '-'}
-                              </td>
-                              <td className="border border-black py-1.5 px-2 text-center">
-                                {sc.ck || '-'}
-                              </td>
-                              <td className="border border-black py-1.5 px-2 text-center font-bold">
-                                {avgSem ?? '-'}
-                              </td>
-                              <td className="border border-black py-1.5 px-2 text-center font-bold">
-                                {avgYr ?? '-'}
-                              </td>
-                              <td className="border border-black py-1.5 px-2">
-                                {sc.comment || ''}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                    <div className="flex justify-between text-xs font-bold mt-2">
-                      <span>
-                        Điểm TB các môn ({semester}): {gpaSem ?? '--'} (
-                        {classifyAcademicRank(gpaSem)})
-                      </span>
-                      <span>
-                        Điểm TB Cả năm: {gpaYear ?? '--'} ({classifyAcademicRank(gpaYear)})
-                      </span>
+
+                    <div className="grid grid-cols-3 gap-2 text-xs border border-black p-3 mb-4">
+                      <div>
+                        Họ và tên: <strong>{stu.name}</strong>
+                      </div>
+                      <div>
+                        Mã định danh Bộ: <strong>{stu.moetId || stu.id}</strong>
+                      </div>
+                      <div>
+                        Ngày sinh: <strong>{stu.dob}</strong> ({stu.gender})
+                      </div>
+                      <div>
+                        Tình trạng: <strong>{stu.status || 'Đang học'}</strong>
+                      </div>
+                      <div>
+                        Học nghề: <strong>{stu.vocational || 'Chưa phân nghề'}</strong>
+                      </div>
+                      <div>
+                        Chức vụ: <strong>{stu.role}</strong>
+                      </div>
+                      <div>
+                        Thái độ học tập: <strong>{stu.attitude}</strong>
+                      </div>
+                      <div>
+                        SĐT Phụ huynh: <strong>{stu.parentPhone || '--'}</strong>
+                      </div>
+                      <div>
+                        Danh hiệu thi đua: <strong>{honor}</strong>
+                      </div>
+                    </div>
+
+                    <div className="mb-4">
+                      <div className="text-xs font-bold uppercase mb-1.5">
+                        Bảng điểm Kiểm tra Đánh giá các môn học (Chuẩn CT GDPT 2018)
+                      </div>
+                      <table className="w-full border-collapse border border-black text-xs">
+                        <thead>
+                          <tr className="bg-gray-100">
+                            <th className="border border-black py-1.5 px-2 text-left">Môn học</th>
+                            <th className="border border-black py-1.5 px-2 text-center">TX1</th>
+                            <th className="border border-black py-1.5 px-2 text-center">TX2</th>
+                            <th className="border border-black py-1.5 px-2 text-center">TX3</th>
+                            <th className="border border-black py-1.5 px-2 text-center">TX4</th>
+                            <th className="border border-black py-1.5 px-2 text-center">Giữa kỳ</th>
+                            <th className="border border-black py-1.5 px-2 text-center">Cuối kỳ</th>
+                            <th className="border border-black py-1.5 px-2 text-center">
+                              ĐTB {semester}
+                            </th>
+                            <th className="border border-black py-1.5 px-2 text-center">ĐTB Cả năm</th>
+                            <th className="border border-black py-1.5 px-2 text-left">
+                              Nhận xét của GVBM
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {currentSubjects.map((subj) => {
+                            const sc = getStudentSubjectScoreObj(stu.id, subj, semester);
+                            const avgSem = calculateSubjectAverage(sc);
+                            const avgYr = getSubjectWholeYearAvg(stu.id, subj);
+                            return (
+                              <tr key={subj}>
+                                <td className="border border-black py-1.5 px-2 font-bold">{subj}</td>
+                                <td className="border border-black py-1.5 px-2 text-center">
+                                  {sc.tx1 || '-'}
+                                </td>
+                                <td className="border border-black py-1.5 px-2 text-center">
+                                  {sc.tx2 || '-'}
+                                </td>
+                                <td className="border border-black py-1.5 px-2 text-center">
+                                  {sc.tx3 || '-'}
+                                </td>
+                                <td className="border border-black py-1.5 px-2 text-center">
+                                  {sc.tx4 || '-'}
+                                </td>
+                                <td className="border border-black py-1.5 px-2 text-center">
+                                  {sc.gk || '-'}
+                                </td>
+                                <td className="border border-black py-1.5 px-2 text-center">
+                                  {sc.ck || '-'}
+                                </td>
+                                <td className="border border-black py-1.5 px-2 text-center font-bold">
+                                  {avgSem ?? '-'}
+                                </td>
+                                <td className="border border-black py-1.5 px-2 text-center font-bold">
+                                  {avgYr ?? '-'}
+                                </td>
+                                <td className="border border-black py-1.5 px-2">
+                                  {sc.comment || ''}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                      <div className="flex justify-between text-xs font-bold mt-2">
+                        <span>
+                          Điểm TB các môn ({semester}): {gpaSem ?? '--'} (
+                          {classifyAcademicRank(gpaSem)})
+                        </span>
+                        <span>
+                          Điểm TB Cả năm: {gpaYear ?? '--'} ({classifyAcademicRank(gpaYear)})
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="border border-black p-3 text-xs mb-6">
+                      <div className="font-bold uppercase mb-1">
+                        Nhận xét đánh giá học tập của Giáo viên & Khuyến nghị phối hợp:
+                      </div>
+                      <p className="leading-relaxed">
+                        {stu.gvcnComment ||
+                          buildSmartPedagogicalComment(stu, 'ENCOURAGING', 'GVCN_YEAR')}
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 text-xs text-center pt-2">
+                      <div>
+                        <div className="font-bold">Ý KIẾN CỦA PHỤ HUYNH HỌC SINH</div>
+                        <div className="text-gray-500 italic mt-1">(Ký và ghi rõ họ tên)</div>
+                      </div>
+                      <div>
+                        <div className="font-bold">GIÁO VIÊN PHỤ TRÁCH</div>
+                        <div className="mt-12 font-bold">{teacherName}</div>
+                      </div>
                     </div>
                   </div>
-
-                  <div className="border border-black p-3 text-xs mb-6">
-                    <div className="font-bold uppercase mb-1">
-                      III. Nhận xét tổng hợp của Giáo viên & Khuyến nghị phối hợp:
-                    </div>
-                    <p className="leading-relaxed">
-                      {stu.gvcnComment ||
-                        buildSmartPedagogicalComment(stu, 'ENCOURAGING', 'GVCN_YEAR')}
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-2 text-xs text-center pt-2">
-                    <div>
-                      <div className="font-bold">Ý KIẾN CỦA PHỤ HUYNH HỌC SINH</div>
-                      <div className="text-gray-500 italic mt-1">(Ký và ghi rõ họ tên)</div>
-                    </div>
-                    <div>
-                      <div className="font-bold">GIÁO VIÊN PHỤ TRÁCH</div>
-                      <div className="mt-12 font-bold">{teacherName}</div>
-                    </div>
-                  </div>
-                </div>
-              );
+                );
               })
             )}
           </div>
