@@ -302,6 +302,11 @@
       { key: 'CN', label: 'Chủ nhật' },
     ];
 
+    const SESSIONS_OF_DAY = [
+      { key: 'S', label: 'Buổi Sáng', shortLabel: 'Sáng' },
+      { key: 'C', label: 'Buổi Chiều', shortLabel: 'Chiều' },
+    ];
+
     const INITIAL_ATTENDANCE_TYPES = [
       { id: 'P', label: 'Vắng có phép', points: -2, color: 'bg-amber-50 text-amber-800 border-amber-300' },
       { id: 'K', label: 'Vắng không phép', points: -5, color: 'bg-red-50 text-red-800 border-red-300' },
@@ -928,14 +933,26 @@
       }, [currentStudents, searchQuery]);
 
       // ============================================================================
-      // TÍNH TOÁN CHUYÊN CẦN 7 NGÀY/TUẦN & ĐIỂM SỐ
+      // TÍNH TOÁN CHUYÊN CẦN 7 NGÀY/TUẦN (2 BUỔI SÁNG - CHIỀU) & ĐIỂM SỐ
       // ============================================================================
       const getStudentWeekRecord = (stuId, weekNum = selectedWeek) => {
         return attendance[activeClass]?.[weekNum]?.[stuId] || {};
       };
 
-      const calculateWeeklyConductScore = (stuId, weekNum = selectedWeek) => {
+      const getStudentDaySessionCodes = (stuId, dayKey, sessionKey = 'S', weekNum = selectedWeek) => {
         const rec = getStudentWeekRecord(stuId, weekNum);
+        const sessionField = `${dayKey}_${sessionKey}`;
+        if (Array.isArray(rec[sessionField])) {
+          return rec[sessionField];
+        }
+        // Tương thích dữ liệu cũ (mặc định tính vào Buổi Sáng)
+        if (sessionKey === 'S' && Array.isArray(rec[dayKey])) {
+          return rec[dayKey];
+        }
+        return [];
+      };
+
+      const calculateWeeklyConductScore = (stuId, weekNum = selectedWeek) => {
         let score = 100;
         let totalAbsentP = 0;
         let totalAbsentK = 0;
@@ -943,16 +960,18 @@
         let totalPlus = 0;
 
         DAYS_OF_WEEK.forEach((d) => {
-          const codes = rec[d.key] || [];
-          codes.forEach((code) => {
-            const typeObj = attendanceTypes.find((t) => t.id === code);
-            if (typeObj) {
-              score += Number(typeObj.points || 0);
-              if (code === 'P') totalAbsentP += 1;
-              if (code === 'K') totalAbsentK += 1;
-              if (code === 'M') totalLate += 1;
-              if (typeObj.points > 0) totalPlus += 1;
-            }
+          SESSIONS_OF_DAY.forEach((ses) => {
+            const codes = getStudentDaySessionCodes(stuId, d.key, ses.key, weekNum);
+            codes.forEach((code) => {
+              const typeObj = attendanceTypes.find((t) => t.id === code);
+              if (typeObj) {
+                score += Number(typeObj.points || 0);
+                if (code === 'P') totalAbsentP += 1;
+                if (code === 'K') totalAbsentK += 1;
+                if (code === 'M') totalLate += 1;
+                if (typeObj.points > 0) totalPlus += 1;
+              }
+            });
           });
         });
 
@@ -1208,17 +1227,27 @@
         });
       };
 
-      const toggleAttendanceCode = (stuId, dayKey, codeId) => {
+      const toggleAttendanceCode = (stuId, dayKey, codeId, sessionKey = 'S') => {
         setAttendance((prev) => {
           const classAtt = prev[activeClass] || {};
           const weekAtt = classAtt[selectedWeek] || {};
-          const stuAtt = weekAtt[stuId] || {};
-          const currentCodes = stuAtt[dayKey] || [];
+          const stuAtt = { ...(weekAtt[stuId] || {}) };
+          const sessionField = `${dayKey}_${sessionKey}`;
+
+          let currentCodes = [];
+          if (Array.isArray(stuAtt[sessionField])) {
+            currentCodes = stuAtt[sessionField];
+          } else if (sessionKey === 'S' && Array.isArray(stuAtt[dayKey])) {
+            currentCodes = stuAtt[dayKey];
+            delete stuAtt[dayKey];
+          }
 
           const exists = currentCodes.includes(codeId);
           const nextCodes = exists
             ? currentCodes.filter((c) => c !== codeId)
             : [...currentCodes, codeId];
+
+          stuAtt[sessionField] = nextCodes;
 
           return {
             ...prev,
@@ -1226,10 +1255,7 @@
               ...classAtt,
               [selectedWeek]: {
                 ...weekAtt,
-                [stuId]: {
-                  ...stuAtt,
-                  [dayKey]: nextCodes,
-                },
+                [stuId]: stuAtt,
               },
             },
           };
@@ -2549,20 +2575,21 @@
                                 <button
                                   onClick={() => handleCopyZaloReport(stu)}
                                   className="px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded font-semibold"
+                                  title="Copy tin nhắn tổng hợp gửi Zalo Phụ huynh"
                                 >
                                   Zalo PH
                                 </button>
                                 <button
                                   onClick={() => triggerPrintPDF(stu, 'CONDUCT_WEEKLY')}
                                   className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded font-semibold"
-                                  title={`In phiếu báo vi phạm Tuần ${selectedWeek} gửi PH`}
+                                  title="In Phiếu vi phạm tuần của học sinh này"
                                 >
                                   Phiếu Tuần
                                 </button>
                                 <button
                                   onClick={() => triggerPrintPDF(stu, 'GRADES')}
-                                  className="px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 rounded font-semibold"
-                                  title="In phiếu điểm các môn học"
+                                  className="px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-800 border border-gray-300 rounded font-medium"
+                                  title="In Phiếu điểm các môn của học sinh này"
                                 >
                                   Phiếu Điểm
                                 </button>
@@ -2570,20 +2597,19 @@
                                   onClick={() =>
                                     setStudentModal({
                                       ...stu,
-                                      moetId: stu.moetId || stu.id,
-                                      status: stu.status || 'Đang học',
-                                      vocational: stu.vocational || 'Chưa phân nghề',
                                       mode: 'EDIT',
                                       originalId: stu.id,
                                     })
                                   }
                                   className="p-1 text-gray-500 hover:text-blue-600"
+                                  title="Chỉnh sửa chi tiết"
                                 >
                                   <Edit2 className="w-3.5 h-3.5" />
                                 </button>
                                 <button
                                   onClick={() => handleDeleteStudent(stu.id)}
                                   className="p-1 text-gray-400 hover:text-red-600"
+                                  title="Xóa học sinh"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </button>
@@ -2597,7 +2623,7 @@
                 </div>
               )}
 
-              {/* TAB 2: CHUYÊN CẦN 7 NGÀY/TUẦN (THỨ 2 - CHỦ NHẬT) */}
+              {/* TAB 2: CHUYÊN CẦN 7 NGÀY/TUẦN (THỨ 2 - CHỦ NHẬT | SÁNG - CHIỀU) */}
               {activeTab === 'CHUYENCAN' && (
                 <div className="space-y-4">
                   <div className="bg-white p-4 rounded border border-gray-200 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
@@ -2620,10 +2646,10 @@
                       </div>
                       <div className="text-xs text-gray-600">
                         <div className="font-semibold text-gray-900">
-                          Sổ Điểm Danh & Thi Đua 7 Ngày/Tuần (Thứ 2 - Chủ Nhật)
+                          Sổ Điểm Danh & Thi Đua 7 Ngày/Tuần - Tách 2 mục: Buổi Sáng & Buổi Chiều
                         </div>
                         <div>
-                          Nhấp vào từng ô ngày (kể cả Chủ nhật) để tích chọn <strong>nhiều lỗi vi phạm hoặc điểm cộng phát biểu</strong> trong cùng 1 ngày.
+                          Nhấp vào mục <strong>Sáng</strong> hoặc <strong>Chiều</strong> của từng ngày để ghi nhận lỗi vi phạm hoặc điểm cộng phát biểu theo đúng buổi học.
                         </div>
                       </div>
                     </div>
@@ -2672,15 +2698,18 @@
                         <tr className="bg-gray-100 border-b border-gray-200 text-gray-700 font-semibold">
                           <th className="py-2.5 px-2.5 border-r border-gray-200 w-32">Mã định danh Bộ</th>
                           <th className="py-2.5 px-3 border-r border-gray-200 min-w-[160px]">Họ và tên</th>
-                          <th className="py-2.5 px-2.5 border-r border-gray-200 w-28">Thái độ</th>
+                          <th className="py-2.5 px-2 border-r border-gray-200 w-24">Thái độ</th>
                           {DAYS_OF_WEEK.map((d) => (
                             <th
                               key={d.key}
-                              className={`py-2.5 px-2 border-r border-gray-200 text-center min-w-[96px] ${
+                              className={`py-2 px-2 border-r border-gray-200 text-center min-w-[125px] ${
                                 d.key === 'CN' ? 'bg-amber-50/70 text-amber-900' : ''
                               }`}
                             >
-                              {d.label}
+                              <div>{d.label}</div>
+                              <div className="text-[10px] font-normal text-gray-500 mt-0.5">
+                                Sáng / Chiều
+                              </div>
                             </th>
                           ))}
                           <th className="py-2.5 px-2.5 border-r border-gray-200 text-center w-24">
@@ -2692,7 +2721,6 @@
                       </thead>
                       <tbody className="divide-y divide-gray-200">
                         {filteredStudents.map((stu) => {
-                          const weekRec = getStudentWeekRecord(stu.id, selectedWeek);
                           const summary = calculateWeeklyConductScore(stu.id, selectedWeek);
                           return (
                             <tr key={stu.id} className="hover:bg-gray-50">
@@ -2706,53 +2734,119 @@
                                   {stu.role !== 'Thành viên' ? ` • ${stu.role}` : ''}
                                 </div>
                               </td>
-                              <td className="py-2 px-2.5 border-r border-gray-200 text-gray-600">
+                              <td className="py-2 px-2 border-r border-gray-200 text-gray-600">
                                 {stu.attitude}
                               </td>
                               {DAYS_OF_WEEK.map((d) => {
-                                const codes = weekRec[d.key] || [];
+                                const morningCodes = getStudentDaySessionCodes(
+                                  stu.id,
+                                  d.key,
+                                  'S',
+                                  selectedWeek
+                                );
+                                const afternoonCodes = getStudentDaySessionCodes(
+                                  stu.id,
+                                  d.key,
+                                  'C',
+                                  selectedWeek
+                                );
                                 return (
                                   <td
                                     key={d.key}
-                                    onClick={() =>
-                                      setAttendanceModal({
-                                        student: stu,
-                                        dayKey: d.key,
-                                        dayLabel: d.label,
-                                      })
-                                    }
-                                    className={`py-2 px-2 border-r border-gray-200 text-center cursor-pointer hover:bg-blue-50/60 ${
+                                    className={`p-1.5 border-r border-gray-200 align-top ${
                                       d.key === 'CN' ? 'bg-amber-50/20' : ''
                                     }`}
                                   >
-                                    {codes.length === 0 ? (
-                                      <span className="text-[11px] text-emerald-700 font-medium">
-                                        Có mặt
-                                      </span>
-                                    ) : (
-                                      <div className="flex flex-wrap justify-center gap-1">
-                                        {codes.map((code) => {
-                                          const tObj = attendanceTypes.find((t) => t.id === code);
-                                          return (
-                                            <span
-                                              key={code}
-                                              className={`px-1.5 py-0.5 rounded border text-[10px] font-bold ${
-                                                tObj ? tObj.color : 'bg-gray-100 text-gray-800'
-                                              }`}
-                                            >
-                                              {code}
-                                            </span>
-                                          );
-                                        })}
+                                    <div className="space-y-1">
+                                      {/* Mục Buổi Sáng */}
+                                      <div
+                                        onClick={() =>
+                                          setAttendanceModal({
+                                            student: stu,
+                                            dayKey: d.key,
+                                            dayLabel: d.label,
+                                            focusSession: 'S',
+                                          })
+                                        }
+                                        className="px-1.5 py-1 rounded border border-gray-200 bg-white hover:border-blue-400 hover:bg-blue-50/40 cursor-pointer flex items-center justify-between gap-1"
+                                        title={`Chấm chuyên cần Buổi Sáng - ${d.label}`}
+                                      >
+                                        <span className="text-[10px] font-bold text-blue-800 shrink-0">
+                                          Sáng:
+                                        </span>
+                                        {morningCodes.length === 0 ? (
+                                          <span className="text-[10px] text-emerald-700 font-medium">
+                                            Đủ
+                                          </span>
+                                        ) : (
+                                          <div className="flex flex-wrap justify-end gap-0.5">
+                                            {morningCodes.map((code) => {
+                                              const tObj = attendanceTypes.find(
+                                                (t) => t.id === code
+                                              );
+                                              return (
+                                                <span
+                                                  key={code}
+                                                  className={`px-1 py-0.2 rounded border text-[9px] font-bold ${
+                                                    tObj ? tObj.color : 'bg-gray-100 text-gray-800'
+                                                  }`}
+                                                >
+                                                  {code}
+                                                </span>
+                                              );
+                                            })}
+                                          </div>
+                                        )}
                                       </div>
-                                    )}
+
+                                      {/* Mục Buổi Chiều */}
+                                      <div
+                                        onClick={() =>
+                                          setAttendanceModal({
+                                            student: stu,
+                                            dayKey: d.key,
+                                            dayLabel: d.label,
+                                            focusSession: 'C',
+                                          })
+                                        }
+                                        className="px-1.5 py-1 rounded border border-gray-200 bg-gray-50/70 hover:border-amber-400 hover:bg-amber-50/40 cursor-pointer flex items-center justify-between gap-1"
+                                        title={`Chấm chuyên cần Buổi Chiều - ${d.label}`}
+                                      >
+                                        <span className="text-[10px] font-bold text-amber-900 shrink-0">
+                                          Chiều:
+                                        </span>
+                                        {afternoonCodes.length === 0 ? (
+                                          <span className="text-[10px] text-emerald-700 font-medium">
+                                            Đủ
+                                          </span>
+                                        ) : (
+                                          <div className="flex flex-wrap justify-end gap-0.5">
+                                            {afternoonCodes.map((code) => {
+                                              const tObj = attendanceTypes.find(
+                                                (t) => t.id === code
+                                              );
+                                              return (
+                                                <span
+                                                  key={code}
+                                                  className={`px-1 py-0.2 rounded border text-[9px] font-bold ${
+                                                    tObj ? tObj.color : 'bg-gray-100 text-gray-800'
+                                                  }`}
+                                                >
+                                                  {code}
+                                                </span>
+                                              );
+                                            })}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
                                   </td>
                                 );
                               })}
                               <td className="py-2 px-2.5 border-r border-gray-200 text-center font-bold text-sm tabular-nums">
                                 {summary.score}đ
                               </td>
-                              <td className="py-2 px-2.5 text-center">
+                              <td className="py-2 px-2.5 border-r border-gray-200 text-center">
                                 <span
                                   className={`px-2 py-0.5 rounded border text-xs font-semibold ${
                                     summary.rank === 'Tốt'
@@ -3731,23 +3825,21 @@
                                 <div className="flex flex-col gap-1">
                                   <button
                                     onClick={() => triggerPrintPDF(stu, 'CONDUCT_WEEKLY')}
-                                    className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded text-[11px] font-semibold"
-                                    title={`In phiếu vi phạm Tuần ${selectedWeek}`}
+                                    className="px-2 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded text-[11px] font-semibold"
                                   >
-                                    Phiếu Tuần {selectedWeek}
+                                    1. Phiếu Vi Phạm Tuần
                                   </button>
                                   <button
                                     onClick={() => triggerPrintPDF(stu, 'GRADES')}
                                     className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-[11px] font-semibold"
-                                    title="In phiếu điểm môn học"
                                   >
-                                    Phiếu Điểm
+                                    2. Phiếu Điểm Các Môn
                                   </button>
                                   <button
                                     onClick={() => handleCopyZaloReport(stu)}
                                     className="px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-800 border border-gray-300 rounded text-[11px] font-medium"
                                   >
-                                    Copy Zalo
+                                    Copy Zalo PH
                                   </button>
                                 </div>
                               </td>
@@ -3762,17 +3854,17 @@
             </div>
           </main>
 
-          {/* MODAL CHỌN ĐA LỖI / ĐIỂM CỘNG TRONG NGÀY */}
+          {/* MODAL CHỌN ĐA LỖI / ĐIỂM CỘNG TRONG NGÀY (TÁCH 2 MỤC: BUỔI SÁNG & BUỔI CHIỀU) */}
           {attendanceModal && (
             <div className="fixed inset-0 z-40 bg-black/40 flex items-center justify-center p-4 no-print">
-              <div className="bg-white border border-gray-300 rounded w-full max-w-md p-5">
+              <div className="bg-white border border-gray-300 rounded w-full max-w-2xl p-5">
                 <div className="flex items-center justify-between border-b border-gray-200 pb-3 mb-3">
                   <div>
                     <h3 className="text-sm font-bold text-gray-900">
-                      Cập nhật Chuyên cần: {attendanceModal.student.name}
+                      Cập nhật Chuyên cần Sáng & Chiều: {attendanceModal.student.name}
                     </h3>
                     <p className="text-xs text-gray-500">
-                      {attendanceModal.dayLabel} - Tuần {selectedWeek} ({currentClassObj.name})
+                      {attendanceModal.dayLabel} - Tuần {selectedWeek} ({currentClassObj.name}) • Tích chọn lỗi vi phạm hoặc điểm cộng theo từng buổi
                     </p>
                   </div>
                   <button
@@ -3783,36 +3875,71 @@
                   </button>
                 </div>
 
-                <div className="space-y-2 max-h-72 overflow-y-auto">
-                  {attendanceTypes.map((t) => {
-                    const currentCodes =
-                      getStudentWeekRecord(attendanceModal.student.id, selectedWeek)[
-                        attendanceModal.dayKey
-                      ] || [];
-                    const active = currentCodes.includes(t.id);
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[65vh] overflow-y-auto">
+                  {SESSIONS_OF_DAY.map((ses) => {
+                    const currentCodes = getStudentDaySessionCodes(
+                      attendanceModal.student.id,
+                      attendanceModal.dayKey,
+                      ses.key,
+                      selectedWeek
+                    );
+                    const isFocused = attendanceModal.focusSession === ses.key;
                     return (
-                      <button
-                        key={t.id}
-                        onClick={() =>
-                          toggleAttendanceCode(
-                            attendanceModal.student.id,
-                            attendanceModal.dayKey,
-                            t.id
-                          )
-                        }
-                        className={`w-full flex items-center justify-between px-3 py-2 rounded border text-xs font-medium ${
-                          active
-                            ? 'bg-blue-50 border-blue-600 text-blue-900 font-bold'
-                            : 'bg-white border-gray-200 text-gray-800 hover:bg-gray-50'
+                      <div
+                        key={ses.key}
+                        className={`p-3 rounded border ${
+                          isFocused
+                            ? 'border-blue-500 bg-blue-50/20'
+                            : 'border-gray-200 bg-gray-50/50'
                         }`}
                       >
-                        <span>
-                          <strong>[{t.id}]</strong> {t.label}
-                        </span>
-                        <span className="font-bold">
-                          {t.points > 0 ? `+${t.points}đ` : `${t.points}đ`}
-                        </span>
-                      </button>
+                        <div className="flex items-center justify-between border-b border-gray-200 pb-2 mb-2.5">
+                          <span
+                            className={`text-xs font-bold uppercase ${
+                              ses.key === 'S' ? 'text-blue-900' : 'text-amber-900'
+                            }`}
+                          >
+                            {ses.key === 'S' ? '1. Mục Buổi Sáng' : '2. Mục Buổi Chiều'}
+                          </span>
+                          <span className="text-[11px] font-semibold text-gray-600">
+                            {currentCodes.length === 0
+                              ? 'Có mặt đủ'
+                              : `Đã chọn: ${currentCodes.join(', ')}`}
+                          </span>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          {attendanceTypes.map((t) => {
+                            const active = currentCodes.includes(t.id);
+                            return (
+                              <button
+                                key={t.id}
+                                type="button"
+                                onClick={() =>
+                                  toggleAttendanceCode(
+                                    attendanceModal.student.id,
+                                    attendanceModal.dayKey,
+                                    t.id,
+                                    ses.key
+                                  )
+                                }
+                                className={`w-full flex items-center justify-between px-2.5 py-2 rounded border text-xs font-medium transition-colors ${
+                                  active
+                                    ? 'bg-blue-600 border-blue-600 text-white font-bold'
+                                    : 'bg-white border-gray-200 text-gray-800 hover:bg-gray-100'
+                                }`}
+                              >
+                                <span className="text-left">
+                                  <strong>[{t.id}]</strong> {t.label}
+                                </span>
+                                <span className="font-bold ml-2 shrink-0">
+                                  {t.points > 0 ? `+${t.points}đ` : `${t.points}đ`}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
                     );
                   })}
                 </div>
@@ -3820,9 +3947,9 @@
                 <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-gray-200">
                   <button
                     onClick={() => setAttendanceModal(null)}
-                    className="px-4 py-1.5 bg-blue-600 text-white rounded text-xs font-semibold"
+                    className="px-5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-semibold"
                   >
-                    Xong
+                    Hoàn tất & Lưu
                   </button>
                 </div>
               </div>
@@ -5011,23 +5138,28 @@
               </div>
             ) : printReportType === 'CONDUCT_WEEKLY' ? (
               /* ==============================================================
-                 1. PHIẾU BÁO CÁO NỀ NẾP & VI PHẠM THEO TỪNG TUẦN
+                 1. PHIẾU BÁO CÁO NỀ NẾP & VI PHẠM THEO TỪNG TUẦN (SÁNG & CHIỀU)
                  Mỗi học sinh 1 trang A4 hoàn chỉnh để gửi phụ huynh ký xác nhận
               =============================================================== */
               studentsToPrint.map((stu, idx) => {
                 const weekCond = calculateWeeklyConductScore(stu.id, selectedWeek);
                 const yearCond = calculateYearAttendanceSummary(stu.id);
-                const weekRec = getStudentWeekRecord(stu.id, selectedWeek);
 
                 const violationList = [];
                 DAYS_OF_WEEK.forEach((d) => {
-                  const codes = weekRec[d.key] || [];
-                  codes.forEach((code) => {
-                    const t = attendanceTypes.find((x) => x.id === code);
-                    const label = t ? t.label : code;
-                    if (t?.points < 0) {
-                      violationList.push({ day: d.label, label, pts: `${t.points}đ` });
-                    }
+                  SESSIONS_OF_DAY.forEach((ses) => {
+                    const codes = getStudentDaySessionCodes(stu.id, d.key, ses.key, selectedWeek);
+                    codes.forEach((code) => {
+                      const t = attendanceTypes.find((x) => x.id === code);
+                      const label = t ? t.label : code;
+                      if (t?.points < 0) {
+                        violationList.push({
+                          day: `${d.label} - ${ses.shortLabel}`,
+                          label,
+                          pts: `${t.points}đ`,
+                        });
+                      }
+                    });
                   });
                 });
 
@@ -5056,7 +5188,7 @@
                         PHIẾU THÔNG BÁO NỀ NẾP & VI PHẠM KỶ LUẬT TUẦN {selectedWeek}
                       </div>
                       <div className="text-xs italic text-gray-700 mt-0.5">
-                        (Từ Thứ Hai đến Chủ Nhật - {semester})
+                        (Phân mục Buổi Sáng & Buổi Chiều từ Thứ Hai đến Chủ Nhật - {semester})
                       </div>
                     </div>
 
@@ -5091,52 +5223,83 @@
                       </div>
                     </div>
 
-                    {/* I. Bảng ghi nhận nề nếp 7 ngày trong tuần */}
+                    {/* I. Bảng ghi nhận nề nếp 7 ngày trong tuần (Tách Buổi Sáng & Buổi Chiều) */}
                     <div className="mb-4">
                       <div className="text-xs font-bold uppercase mb-1.5">
-                        I. Bảng theo dõi nề nếp từng ngày trong Tuần {selectedWeek} (Thứ 2 - Chủ nhật)
+                        I. Bảng theo dõi chuyên cần & vi phạm Buổi Sáng - Buổi Chiều trong Tuần {selectedWeek}
                       </div>
                       <table className="w-full border-collapse border border-black text-xs">
                         <thead>
                           <tr className="bg-gray-100">
-                            <th className="border border-black py-1.5 px-2 text-center w-28">Thứ / Ngày</th>
-                            <th className="border border-black py-1.5 px-3 text-left">Lỗi vi phạm / Khen thưởng ghi nhận</th>
-                            <th className="border border-black py-1.5 px-2 text-center w-24">Điểm cộng/trừ</th>
-                            <th className="border border-black py-1.5 px-2 text-center w-28">Đánh giá ngày</th>
+                            <th className="border border-black py-1.5 px-2 text-center w-24">Thứ / Ngày</th>
+                            <th className="border border-black py-1.5 px-2.5 text-left">1. Mục Buổi Sáng</th>
+                            <th className="border border-black py-1.5 px-2.5 text-left">2. Mục Buổi Chiều</th>
+                            <th className="border border-black py-1.5 px-2 text-center w-20">Điểm ngày</th>
+                            <th className="border border-black py-1.5 px-2 text-center w-24">Đánh giá</th>
                           </tr>
                         </thead>
                         <tbody>
                           {DAYS_OF_WEEK.map((d) => {
-                            const codes = weekRec[d.key] || [];
+                            const morningCodes = getStudentDaySessionCodes(
+                              stu.id,
+                              d.key,
+                              'S',
+                              selectedWeek
+                            );
+                            const afternoonCodes = getStudentDaySessionCodes(
+                              stu.id,
+                              d.key,
+                              'C',
+                              selectedWeek
+                            );
                             let dayPts = 0;
-                            const details = codes.map((c) => {
-                              const t = attendanceTypes.find((x) => x.id === c);
-                              const pts = Number(t?.points || 0);
-                              dayPts += pts;
-                              return `${t ? t.label : c} (${pts > 0 ? '+' : ''}${pts}đ)`;
-                            });
+
+                            const formatCodes = (codes) =>
+                              codes.map((c) => {
+                                const t = attendanceTypes.find((x) => x.id === c);
+                                const pts = Number(t?.points || 0);
+                                dayPts += pts;
+                                return `${t ? t.label : c} (${pts > 0 ? '+' : ''}${pts}đ)`;
+                              });
+
+                            const morningDetails = formatCodes(morningCodes);
+                            const afternoonDetails = formatCodes(afternoonCodes);
+                            const totalCodesCount = morningCodes.length + afternoonCodes.length;
 
                             return (
                               <tr key={d.key}>
                                 <td className="border border-black py-1 px-2 text-center font-bold">
                                   {d.label}
                                 </td>
-                                <td className="border border-black py-1 px-3">
-                                  {codes.length === 0 ? (
-                                    <span className="text-gray-600 italic">
-                                      Đi học đầy đủ, đúng giờ, chấp hành tốt nội quy.
-                                    </span>
+                                <td className="border border-black py-1 px-2.5">
+                                  {morningCodes.length === 0 ? (
+                                    <span className="text-gray-600 italic">Có mặt đầy đủ</span>
                                   ) : (
                                     <span className="font-semibold text-black">
-                                      {details.join('; ')}
+                                      {morningDetails.join('; ')}
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="border border-black py-1 px-2.5">
+                                  {afternoonCodes.length === 0 ? (
+                                    <span className="text-gray-600 italic">Có mặt đầy đủ</span>
+                                  ) : (
+                                    <span className="font-semibold text-black">
+                                      {afternoonDetails.join('; ')}
                                     </span>
                                   )}
                                 </td>
                                 <td className="border border-black py-1 px-2 text-center font-bold">
-                                  {codes.length === 0 ? '0đ' : `${dayPts > 0 ? '+' : ''}${dayPts}đ`}
+                                  {totalCodesCount === 0
+                                    ? '0đ'
+                                    : `${dayPts > 0 ? '+' : ''}${dayPts}đ`}
                                 </td>
                                 <td className="border border-black py-1 px-2 text-center font-semibold">
-                                  {codes.length === 0 ? 'Tốt' : dayPts < 0 ? 'Có vi phạm' : 'Khen thưởng'}
+                                  {totalCodesCount === 0
+                                    ? 'Tốt'
+                                    : dayPts < 0
+                                    ? 'Có vi phạm'
+                                    : 'Khen thưởng'}
                                 </td>
                               </tr>
                             );
